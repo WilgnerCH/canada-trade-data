@@ -27,18 +27,28 @@ def download_file(filename, url):
 
     print(f"Downloading {filename}...")
 
-    response = requests.get(url, stream=True)
+    max_retries = 3
 
-    if response.status_code != 200:
-        print(f"Error downloading {filename}")
-        return
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(url, stream=True, timeout=120)
 
-    with open(filepath, "wb") as f:
-        for chunk in response.iter_content(chunk_size=8192):
-            if chunk:
-                f.write(chunk)
+            if response.status_code != 200:
+                print(f"Error downloading {filename}")
+                return
 
-    print(f"{filename} downloaded successfully.")
+            with open(filepath, "wb") as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+
+            print(f"{filename} downloaded successfully.")
+            return
+
+        except requests.exceptions.RequestException as e:
+            print(f"Attempt {attempt+1} failed: {e}")
+
+    print(f"Failed to download {filename} after {max_retries} attempts.")
 
 def main():
     for filename, url in FILES.items():
