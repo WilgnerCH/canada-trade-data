@@ -3,7 +3,8 @@ import zipfile
 import pandas as pd
 
 RAW_DIR = "data_raw"
-OUTPUT_FILE = "data_processed/canada_trade_full.csv"
+OUTPUT_FILE = "data_processed/canada_trade_full.csv.gz"
+
 
 def find_csv_in_zip(zip_path):
     """Find the HS6 dataset inside the zip"""
@@ -13,9 +14,10 @@ def find_csv_in_zip(zip_path):
                 return file
     return None
 
+
 def process_zip(zip_path, trade_type):
     """Extract and read the correct CSV from a ZIP file"""
-    
+
     csv_name = find_csv_in_zip(zip_path)
 
     if csv_name is None:
@@ -61,7 +63,11 @@ def main():
 
     os.makedirs("data_processed", exist_ok=True)
 
-    final_df.to_csv(OUTPUT_FILE, index=False)
+    final_df.to_csv(
+        OUTPUT_FILE,
+        index=False,
+        compression="gzip"
+    )
 
     print("Dataset created:", OUTPUT_FILE)
 
