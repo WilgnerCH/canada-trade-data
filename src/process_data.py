@@ -1,6 +1,7 @@
 import os
 import zipfile
 import pandas as pd
+from huggingface_hub import HfApi
 
 RAW_DIR = "data_raw"
 OUTPUT_DIR = "data_processed"
@@ -93,6 +94,23 @@ def main():
     print("Dataset created successfully:")
     print(OUTPUT_FILE)
     print(f"Total rows: {len(final_df)}")
+
+    # Upload to HuggingFace
+    print("Uploading dataset to HuggingFace...")
+
+    hf_token = os.environ["HF_TOKEN"]
+
+    api = HfApi()
+
+    api.upload_file(
+        path_or_fileobj=OUTPUT_FILE,
+        path_in_repo="canada_trade_full.csv.gz",
+        repo_id="WilgnerCH/canada-trade-data",
+        repo_type="dataset",
+        token=hf_token
+    )
+
+    print("Upload completed successfully.")
 
 
 if __name__ == "__main__":
