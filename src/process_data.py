@@ -98,7 +98,10 @@ def main():
     # Upload to HuggingFace
     print("Uploading dataset to HuggingFace...")
 
-    hf_token = os.environ["HF_TOKEN"]
+    hf_token = os.getenv("HF_TOKEN")
+
+    if not hf_token:
+        raise ValueError("HF_TOKEN not found. Check GitHub Secrets configuration.")
 
     api = HfApi()
 
