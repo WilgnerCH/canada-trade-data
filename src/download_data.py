@@ -1,5 +1,6 @@
 import os
 import requests
+import datetime
 
 # Pasta onde os arquivos serão salvos
 DATA_DIR = "data_raw"
@@ -7,16 +8,22 @@ DATA_DIR = "data_raw"
 # Criar pasta se não existir
 os.makedirs(DATA_DIR, exist_ok=True)
 
-# URLs oficiais do Statistics Canada
-FILES = {
-    "CIMT-CICM_Imp_2023.zip": "https://www150.statcan.gc.ca/n1/pub/71-607-x/2021004/zip/CIMT-CICM_Imp_2023.zip",
-    "CIMT-CICM_Imp_2024.zip": "https://www150.statcan.gc.ca/n1/pub/71-607-x/2021004/zip/CIMT-CICM_Imp_2024.zip",
-    "CIMT-CICM_Imp_2025.zip": "https://www150.statcan.gc.ca/n1/pub/71-607-x/2021004/zip/CIMT-CICM_Imp_2025.zip",
+# Detectar ano atual automaticamente
+current_year = datetime.datetime.now().year
 
-    "CIMT-CICM_Tot_Exp_2023.zip": "https://www150.statcan.gc.ca/n1/pub/71-607-x/2021004/zip/CIMT-CICM_Tot_Exp_2023.zip",
-    "CIMT-CICM_Tot_Exp_2024.zip": "https://www150.statcan.gc.ca/n1/pub/71-607-x/2021004/zip/CIMT-CICM_Tot_Exp_2024.zip",
-    "CIMT-CICM_Tot_Exp_2025.zip": "https://www150.statcan.gc.ca/n1/pub/71-607-x/2021004/zip/CIMT-CICM_Tot_Exp_2025.zip",
-}
+# Construir lista de arquivos automaticamente
+FILES = {}
+
+for year in range(2023, current_year + 1):
+
+    FILES[f"CIMT-CICM_Imp_{year}.zip"] = (
+        f"https://www150.statcan.gc.ca/n1/pub/71-607-x/2021004/zip/CIMT-CICM_Imp_{year}.zip"
+    )
+
+    FILES[f"CIMT-CICM_Tot_Exp_{year}.zip"] = (
+        f"https://www150.statcan.gc.ca/n1/pub/71-607-x/2021004/zip/CIMT-CICM_Tot_Exp_{year}.zip"
+    )
+
 
 def download_file(filename, url):
     filepath = os.path.join(DATA_DIR, filename)
@@ -50,9 +57,11 @@ def download_file(filename, url):
 
     print(f"Failed to download {filename} after {max_retries} attempts.")
 
+
 def main():
     for filename, url in FILES.items():
         download_file(filename, url)
+
 
 if __name__ == "__main__":
     main()
