@@ -1,0 +1,42 @@
+name: Monthly Trade Data Update
+
+on:
+  schedule:
+    - cron: '0 5 10 * *'   # roda todo dia 10 do mês às 05:00 UTC
+  workflow_dispatch:      # permite rodar manualmente
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Download trade data
+        run: |
+          python src/download_data.py
+
+      - name: Process trade data
+        run: |
+          python src/process_data.py
+
+      - name: Commit updated dataset
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "actions@github.com"
+
+          git add data_processed/* || true
+
+          git commit -m "Automatic monthly data update" || echo "No changes"
+
+          git push
