@@ -1,5 +1,8 @@
 name: Monthly Trade Data Update
 
+permissions:
+  contents: write
+
 on:
   schedule:
     - cron: '0 5 10 * *'   # roda todo dia 10 do mês às 05:00 UTC
