@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import os
+import subprocess
 
 st.set_page_config(page_title="Canada Trade Dashboard", layout="wide")
 
@@ -8,35 +9,27 @@ st.title("🇨🇦 Canada Trade Dashboard")
 
 DATA_PATH = "data_processed/canada_trade_full.csv"
 
-# Verificar se dataset existe
+# Se dataset não existir, gerar automaticamente
 if not os.path.exists(DATA_PATH):
-    st.error("Dataset not found. Run the pipeline first.")
-    st.stop()
 
-# Carregar dados
-df = pd.read_csv(DATA_PATH)
+    st.warning("Dataset not found. Generating dataset...")
 
-st.success("Dataset loaded successfully!")
+    subprocess.run(["python", "src/download_data.py"])
+    subprocess.run(["python", "src/process_data.py"])
 
-# Mostrar dados
-st.subheader("Dataset preview")
-st.dataframe(df.head())
+# carregar dataset
+if os.path.exists(DATA_PATH):
 
-# Verificar colunas básicas
-st.subheader("Columns in dataset")
-st.write(df.columns.tolist())
+    df = pd.read_csv(DATA_PATH)
 
-# Se tiver coluna de valor, criar gráfico
-value_cols = [c for c in df.columns if "VALUE" in c.upper()]
+    st.success("Dataset loaded!")
 
-if value_cols:
-    value_col = value_cols[0]
+    st.subheader("Dataset preview")
+    st.dataframe(df.head())
 
-    st.subheader("Trade values distribution")
-
-    chart_data = df[value_col].dropna()
-
-    st.bar_chart(chart_data.head(100))
+    st.subheader("Columns")
+    st.write(df.columns.tolist())
 
 else:
-    st.warning("No trade value column detected.")
+
+    st.error("Dataset generation failed.")
