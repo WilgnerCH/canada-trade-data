@@ -1,5 +1,4 @@
-pandas==2.2.2
-numpy==1.26.4
-requests==2.32.3
-streamlit==1.32.0
+pandas
+requests
+streamlit
 altair==4.2.2
