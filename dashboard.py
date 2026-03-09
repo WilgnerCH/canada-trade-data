@@ -1,49 +1,42 @@
 import streamlit as st
 import pandas as pd
+import os
 
-st.set_page_config(
-    page_title="Canada Trade Dashboard",
-    layout="wide"
-)
+st.set_page_config(page_title="Canada Trade Dashboard", layout="wide")
 
-st.title("Canada International Trade Dashboard")
+st.title("🇨🇦 Canada Trade Dashboard")
 
-DATA_FILE = "data_processed/canada_trade_full.csv.gz"
+DATA_PATH = "data_processed/canada_trade_full.csv"
 
-@st.cache_data
-def load_data():
-    df = pd.read_csv(DATA_FILE)
-    return df
+# Verificar se dataset existe
+if not os.path.exists(DATA_PATH):
+    st.error("Dataset not found. Run the pipeline first.")
+    st.stop()
 
-df = load_data()
+# Carregar dados
+df = pd.read_csv(DATA_PATH)
 
-st.write("Dataset size:", len(df))
+st.success("Dataset loaded successfully!")
 
-# Trade type filter
-trade_type = st.selectbox(
-    "Select trade type",
-    df["trade_type"].unique()
-)
+# Mostrar dados
+st.subheader("Dataset preview")
+st.dataframe(df.head())
 
-filtered = df[df["trade_type"] == trade_type]
+# Verificar colunas básicas
+st.subheader("Columns in dataset")
+st.write(df.columns.tolist())
 
-st.subheader("Monthly Trade Volume")
+# Se tiver coluna de valor, criar gráfico
+value_cols = [c for c in df.columns if "VALUE" in c.upper()]
 
-monthly = filtered.groupby("REF_DATE")["VALUE"].sum().reset_index()
+if value_cols:
+    value_col = value_cols[0]
 
-st.line_chart(monthly.set_index("REF_DATE"))
+    st.subheader("Trade values distribution")
 
-st.subheader("Top Trading Partners")
+    chart_data = df[value_col].dropna()
 
-top_countries = (
-    filtered.groupby("COUNTRY")["VALUE"]
-    .sum()
-    .sort_values(ascending=False)
-    .head(10)
-)
+    st.bar_chart(chart_data.head(100))
 
-st.bar_chart(top_countries)
-
-st.subheader("Raw Data")
-
-st.dataframe(filtered.head(100))
+else:
+    st.warning("No trade value column detected.")
