@@ -43,7 +43,32 @@ def process_zip(zip_path, trade_type):
                 low_memory=False
             )
 
+    # Add trade type
     df["trade_type"] = trade_type
+
+    # -----------------------------
+    # DATA CLEANING
+    # -----------------------------
+
+    # Fix YearMonth format
+    if "YearMonth/AnnéeMois" in df.columns:
+
+        df["YearMonth/AnnéeMois"] = df["YearMonth/AnnéeMois"].astype(str)
+
+        df["YearMonth"] = pd.to_datetime(
+            df["YearMonth/AnnéeMois"],
+            format="%Y%m",
+            errors="coerce"
+        )
+
+        df["Year"] = df["YearMonth"].dt.year
+        df["Month"] = df["YearMonth"].dt.month
+
+    # Fix HS codes (prevent float formatting)
+    for col in df.columns:
+
+        if col.startswith("HS"):
+            df[col] = df[col].astype(str).str.replace(".0", "", regex=False)
 
     print(f"   rows loaded: {len(df)}")
 
