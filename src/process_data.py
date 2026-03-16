@@ -14,6 +14,7 @@ def find_csv_in_zip(zip_path):
         for file in z.namelist():
             if file.endswith(".csv"):
                 return file
+
     return None
 
 
@@ -27,7 +28,11 @@ def process_zip(zip_path, trade_type):
 
     with zipfile.ZipFile(zip_path) as z:
         with z.open(csv_name) as f:
-            df = pd.read_csv(f, low_memory=False)
+
+            df = pd.read_csv(
+                f,
+                low_memory=False
+            )
 
     df["trade_type"] = trade_type
 
@@ -38,10 +43,16 @@ def process_zip(zip_path, trade_type):
 
 def clean_dataset(df):
 
-    # create date column
+    print("Formatting dataset...")
+
+    # convert YearMonth to string
     ym = df["YearMonth/AnnéeMois"].astype(str)
 
-    df["date"] = ym.str[:4] + "-" + ym.str[4:6] + "-01"
+    # create YYYY-MM date
+    df["date"] = ym.str[:4] + "-" + ym.str[4:6]
+
+    # fix HS10 format (avoid float)
+    df["HS10"] = df["HS10"].astype(str)
 
     # rename columns
     df = df.rename(columns={
@@ -61,7 +72,7 @@ def clean_dataset(df):
             "State",
             "Value",
             "Quantity",
-            "trade_type",
+            "trade_type"
         ]
     ]
 
@@ -97,9 +108,12 @@ def main():
         print("No data processed.")
         return
 
+    print("Combining datasets...")
+
     final_df = pd.concat(all_data, ignore_index=True)
 
     print("Cleaning dataset...")
+
     final_df = clean_dataset(final_df)
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -112,10 +126,10 @@ def main():
         compression="gzip"
     )
 
-    print("Dataset created:")
+    print("Dataset created successfully")
     print("Rows:", len(final_df))
 
-    print("Uploading to HuggingFace...")
+    print("Uploading dataset to HuggingFace...")
 
     hf_token = os.getenv("HF_TOKEN")
 
