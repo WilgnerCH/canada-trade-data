@@ -3,3 +3,4 @@ pyarrow
 huggingface_hub
 requests
 streamlit
+altair<5
