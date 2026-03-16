@@ -10,12 +10,25 @@ OUTPUT_FILE = os.path.join(OUTPUT_DIR, "canada_trade_full.csv.gz")
 
 def find_csv_in_zip(zip_path):
     """
-    Find the HS6 dataset inside the zip file
+    Find the HS6 dataset inside the zip file.
+    Works for both Import and Export datasets.
     """
+
+    possible_files = [
+        "ODPFN015",  # imports
+        "ODPFN014",  # exports
+        "ODPFN013"   # fallback (some export files)
+    ]
+
     with zipfile.ZipFile(zip_path, "r") as z:
         for file in z.namelist():
-            if "ODPFN015" in file and file.endswith(".csv"):
-                return file
+
+            for code in possible_files:
+
+                if code in file and file.endswith(".csv"):
+                    print(f"   Found dataset file: {file}")
+                    return file
+
     return None
 
 
