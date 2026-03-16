@@ -9,48 +9,68 @@ OUTPUT_FILE = os.path.join(OUTPUT_DIR, "canada_trade_full.csv.gz")
 
 
 def find_csv_in_zip(zip_path):
+    """
+    Find the CSV dataset inside the zip file.
+    Works for both Import and Export datasets.
+    """
 
     with zipfile.ZipFile(zip_path, "r") as z:
+
         for file in z.namelist():
+
             if file.endswith(".csv"):
+                print(f"   Found dataset file: {file}")
                 return file
+
     return None
 
 
 def process_zip(zip_path, trade_type):
+    """
+    Extract and read the correct CSV from a ZIP file
+    """
 
     csv_name = find_csv_in_zip(zip_path)
 
     if csv_name is None:
-        print(f"No CSV found in {zip_path}")
+        print(f"⚠️ No CSV file found in {zip_path}")
         return None
 
     with zipfile.ZipFile(zip_path) as z:
         with z.open(csv_name) as f:
-            df = pd.read_csv(f, low_memory=False)
+            df = pd.read_csv(
+                f,
+                low_memory=False
+            )
 
+    # Add trade type
     df["trade_type"] = trade_type
 
-    print("Rows loaded:", len(df))
+    # -----------------------------
+    # DATA CLEANING
+    # -----------------------------
 
-    return df
+    # Fix YearMonth format
+    if "YearMonth/AnnéeMois" in df.columns:
 
+        df["YearMonth/AnnéeMois"] = df["YearMonth/AnnéeMois"].astype(str)
 
-def add_date_column(df):
+        df["YearMonth"] = pd.to_datetime(
+            df["YearMonth/AnnéeMois"],
+            format="%Y%m",
+            errors="coerce"
+        )
 
-    col = "YearMonth/AnnéeMois"
+        df["Year"] = df["YearMonth"].dt.year
+        df["Month"] = df["YearMonth"].dt.month
 
-    if col not in df.columns:
-        return df
+    # Fix HS codes (prevent float formatting)
+    for col in df.columns:
 
-    ym = df[col].astype(str)
+        if col.startswith("HS"):
+            df[col] = df[col].astype(str).str.replace(".0", "", regex=False)
 
-    df["date"] = ym.str[:4] + "-" + ym.str[4:6] + "-01"
-
-    # mover date para primeira coluna
-    cols = list(df.columns)
-    cols.insert(0, cols.pop(cols.index("date")))
-    df = df[cols]
+    print(f"   rows loaded: {len(df)}")
 
     return df
 
@@ -58,6 +78,10 @@ def add_date_column(df):
 def main():
 
     print("Starting dataset processing...")
+
+    if not os.path.exists(RAW_DIR):
+        print("Raw data folder not found.")
+        return
 
     all_data = []
 
@@ -73,7 +97,7 @@ def main():
         else:
             trade = "Export"
 
-        print("Processing", file)
+        print(f"Processing {file} ({trade})")
 
         df = process_zip(full_path, trade)
 
@@ -84,14 +108,13 @@ def main():
         print("No data processed.")
         return
 
-    final_df = pd.concat(all_data, ignore_index=True)
+    print("Combining datasets...")
 
-    print("Adding date column...")
-    final_df = add_date_column(final_df)
+    final_df = pd.concat(all_data, ignore_index=True)
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-    print("Saving dataset...")
+    print("Saving compressed dataset...")
 
     final_df.to_csv(
         OUTPUT_FILE,
@@ -99,15 +122,17 @@ def main():
         compression="gzip"
     )
 
-    print("Dataset created:")
-    print("Rows:", len(final_df))
+    print("Dataset created successfully:")
+    print(OUTPUT_FILE)
+    print(f"Total rows: {len(final_df)}")
 
-    print("Uploading to HuggingFace...")
+    # Upload to HuggingFace
+    print("Uploading dataset to HuggingFace...")
 
     hf_token = os.getenv("HF_TOKEN")
 
     if not hf_token:
-        raise ValueError("HF_TOKEN not found.")
+        raise ValueError("HF_TOKEN not found. Check GitHub Secrets configuration.")
 
     api = HfApi()
 
@@ -119,7 +144,7 @@ def main():
         token=hf_token
     )
 
-    print("Upload completed.")
+    print("Upload completed successfully.")
 
 
 if __name__ == "__main__":
