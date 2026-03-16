@@ -5,9 +5,7 @@ from huggingface_hub import HfApi
 
 RAW_DIR = "data_raw"
 OUTPUT_DIR = "data_processed"
-
-FULL_DATASET = os.path.join(OUTPUT_DIR, "canada_trade_full.csv.gz")
-BRAZIL_DATASET = os.path.join(OUTPUT_DIR, "canada_trade_brazil.csv.gz")
+OUTPUT_FILE = os.path.join(OUTPUT_DIR, "canada_trade_full.csv.gz")
 
 
 def find_csv_in_zip(zip_path):
@@ -33,49 +31,28 @@ def process_zip(zip_path, trade_type):
 
     df["trade_type"] = trade_type
 
-    print(f"Rows loaded: {len(df)}")
+    print("Rows loaded:", len(df))
 
     return df
 
 
-def clean_dates(df):
+def add_date_column(df):
 
     col = "YearMonth/AnnéeMois"
 
-    ym = df[col].astype(str)
-
-    df["date"] = ym.str[:4] + "-" + ym.str[4:6]
-
-    df = df.drop(columns=[col])
-
-    return df
-
-
-def create_hs_levels(df):
-
-    if "HS10" not in df.columns:
+    if col not in df.columns:
         return df
 
-    hs = df["HS10"].astype(str).str.replace(",", "")
+    ym = df[col].astype(str)
 
-    df["HS8"] = hs.str[:8]
-    df["HS6"] = hs.str[:6]
-    df["HS4"] = hs.str[:4]
-    df["HS2"] = hs.str[:2]
+    df["date"] = ym.str[:4] + "-" + ym.str[4:6] + "-01"
+
+    # mover date para primeira coluna
+    cols = list(df.columns)
+    cols.insert(0, cols.pop(cols.index("date")))
+    df = df[cols]
 
     return df
-
-
-def create_brazil_dataset(df):
-
-    if "Country/Pays" not in df.columns:
-        return None
-
-    brazil = df[df["Country/Pays"] == "BR"]
-
-    print("Brazil rows:", len(brazil))
-
-    return brazil
 
 
 def main():
@@ -96,52 +73,47 @@ def main():
         else:
             trade = "Export"
 
-        print(f"Processing {file}")
+        print("Processing", file)
 
         df = process_zip(full_path, trade)
 
         if df is not None:
             all_data.append(df)
 
+    if not all_data:
+        print("No data processed.")
+        return
+
     final_df = pd.concat(all_data, ignore_index=True)
 
-    print("Cleaning dates...")
-    final_df = clean_dates(final_df)
-
-    print("Creating HS levels...")
-    final_df = create_hs_levels(final_df)
+    print("Adding date column...")
+    final_df = add_date_column(final_df)
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-    print("Saving FULL dataset...")
-    final_df.to_csv(FULL_DATASET, index=False, compression="gzip")
+    print("Saving dataset...")
 
-    print("Creating Brazil dataset...")
-    brazil_df = create_brazil_dataset(final_df)
+    final_df.to_csv(
+        OUTPUT_FILE,
+        index=False,
+        compression="gzip"
+    )
 
-    if brazil_df is not None:
-        brazil_df.to_csv(BRAZIL_DATASET, index=False, compression="gzip")
+    print("Dataset created:")
+    print("Rows:", len(final_df))
 
     print("Uploading to HuggingFace...")
 
     hf_token = os.getenv("HF_TOKEN")
 
     if not hf_token:
-        raise ValueError("HF_TOKEN not found")
+        raise ValueError("HF_TOKEN not found.")
 
     api = HfApi()
 
     api.upload_file(
-        path_or_fileobj=FULL_DATASET,
+        path_or_fileobj=OUTPUT_FILE,
         path_in_repo="canada_trade_full.csv.gz",
-        repo_id="WilgnerCH/canada-trade-data",
-        repo_type="dataset",
-        token=hf_token
-    )
-
-    api.upload_file(
-        path_or_fileobj=BRAZIL_DATASET,
-        path_in_repo="canada_trade_brazil.csv.gz",
         repo_id="WilgnerCH/canada-trade-data",
         repo_type="dataset",
         token=hf_token
