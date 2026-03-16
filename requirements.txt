@@ -2,3 +2,4 @@ pandas
 pyarrow
 huggingface_hub
 requests
+streamlit
