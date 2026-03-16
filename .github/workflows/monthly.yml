@@ -2,12 +2,15 @@ name: Monthly Trade Data Update
 
 on:
   schedule:
-    - cron: '0 5 10 * *'   # roda todo dia 10 do mês às 05:00 UTC
-  workflow_dispatch:       # permite rodar manualmente
+    - cron: '0 5 10 * *'
+  workflow_dispatch:
 
 jobs:
   update-data:
     runs-on: ubuntu-latest
+
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
 
     steps:
       - name: Checkout repository
@@ -27,7 +30,5 @@ jobs:
           python src/download_data.py
 
       - name: Process trade data and upload to HuggingFace
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           python src/process_data.py
