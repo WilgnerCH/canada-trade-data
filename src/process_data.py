@@ -9,68 +9,61 @@ OUTPUT_FILE = os.path.join(OUTPUT_DIR, "canada_trade_full.csv.gz")
 
 
 def find_csv_in_zip(zip_path):
-    """
-    Find the CSV dataset inside the zip file.
-    Works for both Import and Export datasets.
-    """
 
     with zipfile.ZipFile(zip_path, "r") as z:
-
         for file in z.namelist():
-
             if file.endswith(".csv"):
-                print(f"   Found dataset file: {file}")
                 return file
-
     return None
 
 
 def process_zip(zip_path, trade_type):
-    """
-    Extract and read the correct CSV from a ZIP file
-    """
 
     csv_name = find_csv_in_zip(zip_path)
 
     if csv_name is None:
-        print(f"⚠️ No CSV file found in {zip_path}")
+        print(f"No CSV found in {zip_path}")
         return None
 
     with zipfile.ZipFile(zip_path) as z:
         with z.open(csv_name) as f:
-            df = pd.read_csv(
-                f,
-                low_memory=False
-            )
+            df = pd.read_csv(f, low_memory=False)
 
-    # Add trade type
     df["trade_type"] = trade_type
 
-    # -----------------------------
-    # DATA CLEANING
-    # -----------------------------
+    print("Rows loaded:", len(df))
 
-    # Fix YearMonth format
-    if "YearMonth/AnnéeMois" in df.columns:
+    return df
 
-        df["YearMonth/AnnéeMois"] = df["YearMonth/AnnéeMois"].astype(str)
 
-        df["YearMonth"] = pd.to_datetime(
-            df["YearMonth/AnnéeMois"],
-            format="%Y%m",
-            errors="coerce"
-        )
+def clean_dataset(df):
 
-        df["Year"] = df["YearMonth"].dt.year
-        df["Month"] = df["YearMonth"].dt.month
+    # create date column
+    ym = df["YearMonth/AnnéeMois"].astype(str)
 
-    # Fix HS codes (prevent float formatting)
-    for col in df.columns:
+    df["date"] = ym.str[:4] + "-" + ym.str[4:6] + "-01"
 
-        if col.startswith("HS"):
-            df[col] = df[col].astype(str).str.replace(".0", "", regex=False)
+    # rename columns
+    df = df.rename(columns={
+        "Country/Pays": "Country",
+        "State/État": "State",
+        "Value/Valeur": "Value",
+        "Quantity/Quantité": "Quantity"
+    })
 
-    print(f"   rows loaded: {len(df)}")
+    # keep only desired columns
+    df = df[
+        [
+            "date",
+            "HS10",
+            "Country",
+            "Province",
+            "State",
+            "Value",
+            "Quantity",
+            "trade_type",
+        ]
+    ]
 
     return df
 
@@ -78,10 +71,6 @@ def process_zip(zip_path, trade_type):
 def main():
 
     print("Starting dataset processing...")
-
-    if not os.path.exists(RAW_DIR):
-        print("Raw data folder not found.")
-        return
 
     all_data = []
 
@@ -97,7 +86,7 @@ def main():
         else:
             trade = "Export"
 
-        print(f"Processing {file} ({trade})")
+        print("Processing", file)
 
         df = process_zip(full_path, trade)
 
@@ -108,13 +97,14 @@ def main():
         print("No data processed.")
         return
 
-    print("Combining datasets...")
-
     final_df = pd.concat(all_data, ignore_index=True)
+
+    print("Cleaning dataset...")
+    final_df = clean_dataset(final_df)
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-    print("Saving compressed dataset...")
+    print("Saving dataset...")
 
     final_df.to_csv(
         OUTPUT_FILE,
@@ -122,17 +112,15 @@ def main():
         compression="gzip"
     )
 
-    print("Dataset created successfully:")
-    print(OUTPUT_FILE)
-    print(f"Total rows: {len(final_df)}")
+    print("Dataset created:")
+    print("Rows:", len(final_df))
 
-    # Upload to HuggingFace
-    print("Uploading dataset to HuggingFace...")
+    print("Uploading to HuggingFace...")
 
     hf_token = os.getenv("HF_TOKEN")
 
     if not hf_token:
-        raise ValueError("HF_TOKEN not found. Check GitHub Secrets configuration.")
+        raise ValueError("HF_TOKEN not found.")
 
     api = HfApi()
 
@@ -144,7 +132,7 @@ def main():
         token=hf_token
     )
 
-    print("Upload completed successfully.")
+    print("Upload completed.")
 
 
 if __name__ == "__main__":
