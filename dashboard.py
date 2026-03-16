@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import os
 
 st.set_page_config(
     page_title="Canada Trade Dashboard",
@@ -9,26 +8,16 @@ st.set_page_config(
 
 st.title("🇨🇦 Canada Trade Dashboard")
 
-DATA_PATH = "data_processed/canada_trade_full.csv.gz"
+DATA_URL = "https://huggingface.co/datasets/WilgnerCH/canada-trade-data/resolve/main/canada_trade_full.csv.gz"
 
 
 @st.cache_data
 def load_data():
     return pd.read_csv(
-        DATA_PATH,
+        DATA_URL,
         compression="gzip",
         low_memory=False
     )
-
-
-if not os.path.exists(DATA_PATH):
-
-    st.warning(
-        "Dataset not available yet.\n\n"
-        "Run the GitHub pipeline to generate the dataset."
-    )
-
-    st.stop()
 
 
 df = load_data()
