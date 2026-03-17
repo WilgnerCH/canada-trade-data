@@ -16,11 +16,11 @@ def find_csv_in_zip(zip_path):
 
         for file in z.namelist():
 
-            # IMPORT dataset (HS10)
+            # IMPORT → HS10
             if "Imp" in filename and "ODPFN014" in file and file.endswith(".csv"):
                 return file
 
-            # EXPORT dataset (HS10)
+            # EXPORT → HS8
             if "Exp" in filename and "ODPFN017" in file and file.endswith(".csv"):
                 return file
 
@@ -42,7 +42,10 @@ def process_zip(zip_path, trade_type):
 
             df = pd.read_csv(
                 f,
-                dtype={"HS10": "string"},  # 🔥 evita perda de zeros
+                dtype={
+                    "HS10": "string",
+                    "HS8": "string"
+                },
                 low_memory=False
             )
 
@@ -57,11 +60,11 @@ def clean_dataset(df):
 
     print("Formatting dataset...")
 
-    # 📅 Date (YYYY-MM)
+    # 📅 Date
     ym = df["YearMonth/AnnéeMois"].astype(str)
     df["date"] = ym.str[:4] + "-" + ym.str[4:6]
 
-    # 🔤 Rename columns
+    # 🔤 Rename
     df = df.rename(columns={
         "Country/Pays": "Country",
         "State/État": "State",
@@ -69,31 +72,33 @@ def clean_dataset(df):
         "Quantity/Quantité": "Quantity"
     })
 
-    # 🚨 REMOVE NULLS BEFORE ANYTHING
-    df = df[df["HS10"].notna()]
+    # 🚀 CREATE UNIFIED HS COLUMN
+    df["HS"] = df["HS10"].fillna(df["HS8"])
 
-    # convert to string safely
-    df["HS10"] = df["HS10"].astype(str)
+    # remove null HS
+    df = df[df["HS"].notna()]
+
+    df["HS"] = df["HS"].astype(str)
 
     # remove invalid values
-    df = df[~df["HS10"].str.contains("nan", case=False)]
-    df = df[~df["HS10"].str.contains("<NA>", case=False)]
-    df = df[df["HS10"].str.strip() != ""]
+    df = df[~df["HS"].str.contains("nan", case=False)]
+    df = df[~df["HS"].str.contains("<NA>", case=False)]
+    df = df[df["HS"].str.strip() != ""]
 
     # remove ".0"
-    df["HS10"] = df["HS10"].str.replace(".0", "", regex=False)
+    df["HS"] = df["HS"].str.replace(".0", "", regex=False)
 
-    # keep only numeric HS codes
-    df = df[df["HS10"].str.match(r"^\d+$")]
+    # keep only numeric
+    df = df[df["HS"].str.match(r"^\d+$")]
 
-    # ensure 10 digits
-    df["HS10"] = df["HS10"].str.zfill(10)
+    # pad → HS8 vira 8, HS10 vira 10
+    df["HS"] = df["HS"].str.zfill(10)
 
-    # 📦 Keep only needed columns
+    # 📦 Final columns
     df = df[
         [
             "date",
-            "HS10",
+            "HS",
             "Country",
             "Province",
             "State",
@@ -103,7 +108,6 @@ def clean_dataset(df):
         ]
     ]
 
-    # 📊 Sort
     df = df.sort_values("date")
 
     return df
