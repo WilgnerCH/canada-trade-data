@@ -2,19 +2,20 @@ import os
 import requests
 import datetime
 
-# Pasta onde os arquivos serão salvos
+# Folder where files will be saved
 DATA_DIR = "data_raw"
 
-# Criar pasta se não existir
+# Create folder if it doesn't exist
 os.makedirs(DATA_DIR, exist_ok=True)
 
-# Detectar ano atual automaticamente
+# Detect current year automatically
 current_year = datetime.datetime.now().year
 
-# Construir lista de arquivos automaticamente
+# Build file list automatically
 FILES = {}
 
-for year in range(2023, current_year + 1):
+# Start from 2024 instead of 2023
+for year in range(2024, current_year + 1):
 
     FILES[f"CIMT-CICM_Imp_{year}.zip"] = (
         f"https://www150.statcan.gc.ca/n1/pub/71-607-x/2021004/zip/CIMT-CICM_Imp_{year}.zip"
@@ -26,6 +27,7 @@ for year in range(2023, current_year + 1):
 
 
 def download_file(filename, url):
+
     filepath = os.path.join(DATA_DIR, filename)
 
     if os.path.exists(filepath):
@@ -37,6 +39,7 @@ def download_file(filename, url):
     max_retries = 3
 
     for attempt in range(max_retries):
+
         try:
             response = requests.get(url, stream=True, timeout=120)
 
@@ -45,7 +48,9 @@ def download_file(filename, url):
                 return
 
             with open(filepath, "wb") as f:
+
                 for chunk in response.iter_content(chunk_size=8192):
+
                     if chunk:
                         f.write(chunk)
 
@@ -53,13 +58,18 @@ def download_file(filename, url):
             return
 
         except requests.exceptions.RequestException as e:
+
             print(f"Attempt {attempt+1} failed: {e}")
 
     print(f"Failed to download {filename} after {max_retries} attempts.")
 
 
 def main():
+
+    print("Starting download of trade data...")
+
     for filename, url in FILES.items():
+
         download_file(filename, url)
 
 
