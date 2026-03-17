@@ -51,9 +51,6 @@ def clean_dataset(df):
     # create YYYY-MM date
     df["date"] = ym.str[:4] + "-" + ym.str[4:6]
 
-    # fix HS10 format (avoid float)
-    df["HS10"] = df["HS10"].astype(str)
-
     # rename columns
     df = df.rename(columns={
         "Country/Pays": "Country",
@@ -61,6 +58,18 @@ def clean_dataset(df):
         "Value/Valeur": "Value",
         "Quantity/Quantité": "Quantity"
     })
+
+    # convert HS10 safely to numeric
+    df["HS10"] = pd.to_numeric(df["HS10"], errors="coerce")
+
+    # remove rows where HS10 is missing
+    df = df.dropna(subset=["HS10"])
+
+    # convert HS10 to clean string
+    df["HS10"] = df["HS10"].astype("int64").astype(str)
+
+    # remove rows with no trade value
+    df = df[df["Value"] > 0]
 
     # keep only desired columns
     df = df[
@@ -75,6 +84,9 @@ def clean_dataset(df):
             "trade_type"
         ]
     ]
+
+    # sort dataset by date
+    df = df.sort_values("date")
 
     return df
 
