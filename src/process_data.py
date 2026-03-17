@@ -11,8 +11,15 @@ OUTPUT_FILE = os.path.join(OUTPUT_DIR, "canada_trade_full.csv.gz")
 def find_csv_in_zip(zip_path):
 
     with zipfile.ZipFile(zip_path, "r") as z:
+
         for file in z.namelist():
-            if file.endswith(".csv"):
+
+            # Import dataset (HS10)
+            if "Imp" in zip_path and "ODPFN014" in file and file.endswith(".csv"):
+                return file
+
+            # Export dataset (HS10)
+            if "Exp" in zip_path and "ODPFN017" in file and file.endswith(".csv"):
                 return file
 
     return None
@@ -25,6 +32,8 @@ def process_zip(zip_path, trade_type):
     if csv_name is None:
         print(f"No CSV found in {zip_path}")
         return None
+
+    print("Using dataset file:", csv_name)
 
     with zipfile.ZipFile(zip_path) as z:
         with z.open(csv_name) as f:
@@ -45,10 +54,8 @@ def clean_dataset(df):
 
     print("Formatting dataset...")
 
-    # convert YearMonth to string
+    # format date
     ym = df["YearMonth/AnnéeMois"].astype(str)
-
-    # create YYYY-MM date
     df["date"] = ym.str[:4] + "-" + ym.str[4:6]
 
     # rename columns
@@ -59,19 +66,23 @@ def clean_dataset(df):
         "Quantity/Quantité": "Quantity"
     })
 
-    # convert HS10 safely to numeric
-    df["HS10"] = pd.to_numeric(df["HS10"], errors="coerce")
+    # fix HS10 formatting
+    df["HS10"] = (
+        df["HS10"]
+        .astype(str)
+        .str.replace(".0", "", regex=False)
+        .str.strip()
+    )
 
-    # remove rows where HS10 is missing
-    df = df.dropna(subset=["HS10"])
+    # remove empty HS codes
+    df = df[df["HS10"].notna()]
+    df = df[df["HS10"] != ""]
+    df = df[df["HS10"] != "nan"]
 
-    # convert HS10 to clean string
-    df["HS10"] = df["HS10"].astype("int64").astype(str)
+    # ensure 10 digits
+    df["HS10"] = df["HS10"].str.zfill(10)
 
-    # remove rows with no trade value
-    df = df[df["Value"] > 0]
-
-    # keep only desired columns
+    # keep only necessary columns
     df = df[
         [
             "date",
@@ -85,7 +96,7 @@ def clean_dataset(df):
         ]
     ]
 
-    # sort dataset by date
+    # sort dataset
     df = df.sort_values("date")
 
     return df
