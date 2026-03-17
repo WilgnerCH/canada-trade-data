@@ -10,16 +10,18 @@ OUTPUT_FILE = os.path.join(OUTPUT_DIR, "canada_trade_full.csv.gz")
 
 def find_csv_in_zip(zip_path):
 
+    filename = os.path.basename(zip_path)
+
     with zipfile.ZipFile(zip_path, "r") as z:
 
         for file in z.namelist():
 
-            # Import dataset (HS10)
-            if "Imp" in zip_path and "ODPFN014" in file and file.endswith(".csv"):
+            # IMPORT dataset
+            if "Imp" in filename and "ODPFN014" in file and file.endswith(".csv"):
                 return file
 
-            # Export dataset (HS10)
-            if "Exp" in zip_path and "ODPFN017" in file and file.endswith(".csv"):
+            # EXPORT dataset
+            if "Exp" in filename and "ODPFN017" in file and file.endswith(".csv"):
                 return file
 
     return None
@@ -30,16 +32,17 @@ def process_zip(zip_path, trade_type):
     csv_name = find_csv_in_zip(zip_path)
 
     if csv_name is None:
-        print(f"No CSV found in {zip_path}")
+        print("No CSV found in:", zip_path)
         return None
 
-    print("Using dataset file:", csv_name)
+    print("Using dataset:", csv_name)
 
     with zipfile.ZipFile(zip_path) as z:
         with z.open(csv_name) as f:
 
             df = pd.read_csv(
                 f,
+                dtype={"HS10": "string"},
                 low_memory=False
             )
 
@@ -54,11 +57,10 @@ def clean_dataset(df):
 
     print("Formatting dataset...")
 
-    # format date
     ym = df["YearMonth/AnnéeMois"].astype(str)
+
     df["date"] = ym.str[:4] + "-" + ym.str[4:6]
 
-    # rename columns
     df = df.rename(columns={
         "Country/Pays": "Country",
         "State/État": "State",
@@ -66,7 +68,6 @@ def clean_dataset(df):
         "Quantity/Quantité": "Quantity"
     })
 
-    # fix HS10 formatting
     df["HS10"] = (
         df["HS10"]
         .astype(str)
@@ -74,15 +75,12 @@ def clean_dataset(df):
         .str.strip()
     )
 
-    # remove empty HS codes
     df = df[df["HS10"].notna()]
     df = df[df["HS10"] != ""]
     df = df[df["HS10"] != "nan"]
 
-    # ensure 10 digits
     df["HS10"] = df["HS10"].str.zfill(10)
 
-    # keep only necessary columns
     df = df[
         [
             "date",
@@ -96,7 +94,6 @@ def clean_dataset(df):
         ]
     ]
 
-    # sort dataset
     df = df.sort_values("date")
 
     return df
@@ -117,10 +114,12 @@ def main():
 
         if "Imp" in file:
             trade = "Import"
-        else:
+        elif "Exp" in file:
             trade = "Export"
+        else:
+            continue
 
-        print("Processing", file)
+        print("Processing:", file)
 
         df = process_zip(full_path, trade)
 
