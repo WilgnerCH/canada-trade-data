@@ -5,9 +5,10 @@ from huggingface_hub import HfApi
 
 RAW_DIR = "data_raw"
 OUTPUT_DIR = "data_processed"
-OUTPUT_FILE = os.path.join(OUTPUT_DIR, "canada_trade_full.csv.gz")
+OUTPUT_FILE = os.path.join(OUTPUT_DIR, "canada_trade_full.parquet")
 
 
+# 🔍 FIND CORRECT CSV
 def find_csv_in_zip(zip_path):
 
     filename = os.path.basename(zip_path)
@@ -27,6 +28,7 @@ def find_csv_in_zip(zip_path):
     return None
 
 
+# 📦 LOAD DATA
 def process_zip(zip_path, trade_type):
 
     csv_name = find_csv_in_zip(zip_path)
@@ -56,6 +58,29 @@ def process_zip(zip_path, trade_type):
     return df
 
 
+# 🎯 FORMAT HS CODE CORRECTLY
+def format_hs(code):
+
+    if pd.isna(code):
+        return None
+
+    code = str(code).strip()
+
+    if not code.isdigit():
+        return None
+
+    if len(code) == 8:
+        code = code.zfill(8)
+        return f"{code[:4]}.{code[4:6]}.{code[6:8]}"
+
+    elif len(code) == 10:
+        code = code.zfill(10)
+        return f"{code[:4]}.{code[4:6]}.{code[6:8]} {code[8:10]}"
+
+    return None
+
+
+# 🧹 CLEAN DATASET
 def clean_dataset(df):
 
     print("Formatting dataset...")
@@ -73,26 +98,32 @@ def clean_dataset(df):
     })
 
     # 🚀 CREATE UNIFIED HS COLUMN
-    df["HS"] = df["HS10"].fillna(df["HS8"])
+    df["HS_raw"] = df["HS10"].fillna(df["HS8"])
 
-    # remove null HS
-    df = df[df["HS"].notna()]
+    # remove null
+    df = df[df["HS_raw"].notna()]
 
-    df["HS"] = df["HS"].astype(str)
+    df["HS_raw"] = df["HS_raw"].astype(str)
 
-    # remove invalid values
-    df = df[~df["HS"].str.contains("nan", case=False)]
-    df = df[~df["HS"].str.contains("<NA>", case=False)]
-    df = df[df["HS"].str.strip() != ""]
+    # remove lixo
+    df = df[~df["HS_raw"].str.contains("nan", case=False)]
+    df = df[~df["HS_raw"].str.contains("<NA>", case=False)]
+    df = df[df["HS_raw"].str.strip() != ""]
 
     # remove ".0"
-    df["HS"] = df["HS"].str.replace(".0", "", regex=False)
+    df["HS_raw"] = df["HS_raw"].str.replace(".0", "", regex=False)
 
     # keep only numeric
-    df = df[df["HS"].str.match(r"^\d+$")]
+    df = df[df["HS_raw"].str.match(r"^\d+$")]
 
-    # pad → HS8 vira 8, HS10 vira 10
-    df["HS"] = df["HS"].str.zfill(10)
+    # 🎯 FORMAT FINAL
+    df["HS"] = df["HS_raw"].apply(format_hs)
+
+    # remove inválidos após formatação
+    df = df[df["HS"].notna()]
+
+    # 🔒 GARANTE STRING (CRÍTICO)
+    df["HS"] = df["HS"].astype("string")
 
     # 📦 Final columns
     df = df[
@@ -113,6 +144,7 @@ def clean_dataset(df):
     return df
 
 
+# 🚀 MAIN PIPELINE
 def main():
 
     print("Starting dataset processing...")
@@ -154,12 +186,11 @@ def main():
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-    print("Saving dataset...")
+    print("Saving dataset as PARQUET (preserves schema)...")
 
-    final_df.to_csv(
+    final_df.to_parquet(
         OUTPUT_FILE,
-        index=False,
-        compression="gzip"
+        index=False
     )
 
     print("Dataset created successfully")
@@ -176,7 +207,7 @@ def main():
 
     api.upload_file(
         path_or_fileobj=OUTPUT_FILE,
-        path_in_repo="canada_trade_full.csv.gz",
+        path_in_repo="canada_trade_full.parquet",
         repo_id="WilgnerCH/canada-trade-data",
         repo_type="dataset",
         token=hf_token
