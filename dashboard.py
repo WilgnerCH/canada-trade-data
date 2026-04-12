@@ -6,7 +6,6 @@ st.set_page_config(
     layout="wide"
 )
 
-# 🎨 STYLE
 st.markdown("""
 <style>
 .metric {
