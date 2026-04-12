@@ -8,7 +8,9 @@ st.set_page_config(
 
 st.title("🇨🇦 Canada Trade Dashboard")
 
-DATA_URL = "https://huggingface.co/datasets/WilgnerCH/canada-trade-data/resolve/main/canada_trade_full.csv.gz"
+DATA_URL = "https://huggingface.co/datasets/WilgnerCH/canada-trade-data/resolve/main/canada_trade_full.parquet"
+
+df = pd.read_parquet(DATA_URL)
 
 
 @st.cache_data
