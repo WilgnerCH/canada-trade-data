@@ -105,7 +105,7 @@ def clean_dataset(df):
 
     df["HS_raw"] = df["HS_raw"].astype(str)
 
-    # remove lixo
+    # remove lixo textual comum
     df = df[~df["HS_raw"].str.contains("nan", case=False)]
     df = df[~df["HS_raw"].str.contains("<NA>", case=False)]
     df = df[df["HS_raw"].str.strip() != ""]
@@ -113,8 +113,11 @@ def clean_dataset(df):
     # remove ".0"
     df["HS_raw"] = df["HS_raw"].str.replace(".0", "", regex=False)
 
-    # keep only numeric
-    df = df[df["HS_raw"].str.match(r"^\d+$")]
+    # remove qualquer coisa que não seja número
+    df["HS_raw"] = df["HS_raw"].str.replace(r"\D", "", regex=True)
+
+    # mantém apenas HS válidos (8 ou 10 dígitos)
+    df = df[df["HS_raw"].str.len().isin([8, 10])]
 
     # 🎯 FORMAT FINAL
     df["HS"] = df["HS_raw"].apply(format_hs)
@@ -122,7 +125,7 @@ def clean_dataset(df):
     # remove inválidos após formatação
     df = df[df["HS"].notna()]
 
-    # 🔒 GARANTE STRING (CRÍTICO)
+    # 🔒 GARANTE STRING
     df["HS"] = df["HS"].astype("string")
 
     # 📦 Final columns
@@ -140,6 +143,8 @@ def clean_dataset(df):
     ]
 
     df = df.sort_values("date")
+
+    print("Final rows after cleaning:", len(df))
 
     return df
 
