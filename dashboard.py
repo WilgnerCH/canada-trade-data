@@ -1,11 +1,3 @@
-st.markdown("""
-<style>
-.metric {
-    font-size: 20px !important;
-}
-</style>
-""", unsafe_allow_html=True)
-
 import streamlit as st
 import pandas as pd
 
@@ -13,6 +5,15 @@ st.set_page_config(
     page_title="Canada Trade Intelligence",
     layout="wide"
 )
+
+# 🎨 STYLE
+st.markdown("""
+<style>
+.metric {
+    font-size: 20px !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
 st.title("🇨🇦 Canada Trade Intelligence Dashboard")
 
