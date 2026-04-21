@@ -8,7 +8,7 @@ OUTPUT_DIR = "data_processed"
 OUTPUT_FILE = os.path.join(OUTPUT_DIR, "canada_trade_full.parquet")
 
 
-# 🔍 FIND CORRECT CSV
+# FIND CORRECT CSV
 def find_csv_in_zip(zip_path):
 
     filename = os.path.basename(zip_path)
@@ -28,7 +28,7 @@ def find_csv_in_zip(zip_path):
     return None
 
 
-# 📦 LOAD DATA
+# LOAD DATA
 def process_zip(zip_path, trade_type):
 
     csv_name = find_csv_in_zip(zip_path)
@@ -58,7 +58,7 @@ def process_zip(zip_path, trade_type):
     return df
 
 
-# 🎯 FORMAT HS CODE CORRECTLY
+# FORMAT HS CODE
 def format_hs(code):
 
     if pd.isna(code):
@@ -79,17 +79,16 @@ def format_hs(code):
 
     return None
 
-
-# 🧹 CLEAN DATASET
+# CLEAN DATASET
 def clean_dataset(df):
 
     print("Formatting dataset...")
 
-    # 📅 Date
+    # Date
     ym = df["YearMonth/AnnéeMois"].astype(str)
     df["date"] = ym.str[:4] + "-" + ym.str[4:6]
 
-    # 🔤 Rename
+    # Rename
     df = df.rename(columns={
         "Country/Pays": "Country",
         "State/État": "State",
@@ -97,7 +96,7 @@ def clean_dataset(df):
         "Quantity/Quantité": "Quantity"
     })
 
-    # 🚀 CREATE UNIFIED HS COLUMN
+    # CREATE UNIFIED HS COLUMN
     df["HS_raw"] = df["HS10"].fillna(df["HS8"])
 
     # remove null
@@ -119,16 +118,16 @@ def clean_dataset(df):
     # mantém apenas HS válidos (8 ou 10 dígitos)
     df = df[df["HS_raw"].str.len().isin([8, 10])]
 
-    # 🎯 FORMAT FINAL
+    # FORMAT FINAL
     df["HS"] = df["HS_raw"].apply(format_hs)
 
     # remove inválidos após formatação
     df = df[df["HS"].notna()]
 
-    # 🔒 GARANTE STRING
+    # GARANTE STRING
     df["HS"] = df["HS"].astype("string")
 
-    # 📦 Final columns
+    # Final columns
     df = df[
         [
             "date",
@@ -149,7 +148,7 @@ def clean_dataset(df):
     return df
 
 
-# 🚀 MAIN PIPELINE
+# MAIN PIPELINE
 def main():
 
     print("Starting dataset processing...")
