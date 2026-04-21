@@ -14,7 +14,7 @@ current_year = datetime.datetime.now().year
 # Build file list automatically
 FILES = {}
 
-# Start from 2024 instead of 2023
+# Start from 2024
 for year in range(2024, current_year + 1):
 
     FILES[f"CIMT-CICM_Imp_{year}.zip"] = (
